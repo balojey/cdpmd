@@ -19,7 +19,7 @@ model = OpenAIModel(
 )
 cdpmd_agent = Agent(
     model,
-    deps_type=CDPMD_Deps,
+    # deps_type=CDPMD_Deps,
     result_type=CDPMDAgentResponseSchema,
     # tools=[
     #     Tool(get_resource, takes_ctx=True)
@@ -39,34 +39,35 @@ async def new_query(deps: str) -> CDPMDAgentResponseSchema:
     deps = CDPMD_Deps(**json.loads(deps))
     result = await cdpmd_agent.run(
         f"""Act as an advanced predictive model for diabetes progression. Analyze the patient's clinical data to:
-    1. Predict likely disease progression over the next 1-5 years
-    2. Identify key risk factors for acute complications (e.g., hypoglycemia, DKA) 
-    and chronic complications (retinopathy, nephropathy, neuropathy)
-    3. Assess current treatment efficacy
-    4. Recommend evidence-based interventions
+        1. Predict likely disease progression over the next 1-5 years
+        2. Identify key risk factors for acute complications (e.g., hypoglycemia, DKA) 
+        and chronic complications (retinopathy, nephropathy, neuropathy)
+        3. Assess current treatment efficacy
+        4. Recommend evidence-based interventions
 
-    Here are the patient's clinical data:
-    - Patient Details = {await new_get_resource(ResourceType.patient.value, deps.access_token, deps.meldrx_base_url, deps.patient_id)}
-    - Conditions = {await new_get_resource(ResourceType.condition.value, deps.access_token, deps.meldrx_base_url, deps.patient_id)}
-    - Medications = {await new_get_resource(ResourceType.medication.value, deps.access_token, deps.meldrx_base_url, deps.patient_id)}
-    - Observations = {await new_get_resource(ResourceType.observation.value, deps.access_token, deps.meldrx_base_url, deps.patient_id)}
-    - Tasks = {await new_get_resource(ResourceType.task.value, deps.access_token, deps.meldrx_base_url, deps.patient_id)}
+        Here are the patient's clinical data:
+        - Patient Details = {await new_get_resource(ResourceType.patient.value, deps.access_token, deps.meldrx_base_url, deps.patient_id)}
+        - Conditions = {await new_get_resource(ResourceType.condition.value, deps.access_token, deps.meldrx_base_url, deps.patient_id)}
+        - Medications = {await new_get_resource(ResourceType.medication.value, deps.access_token, deps.meldrx_base_url, deps.patient_id)}
+        - Observations = {await new_get_resource(ResourceType.observation.value, deps.access_token, deps.meldrx_base_url, deps.patient_id)}
+        - Tasks = {await new_get_resource(ResourceType.task.value, deps.access_token, deps.meldrx_base_url, deps.patient_id)}
 
-    Required analysis:
-    - Evaluate glycemic control using HbA1c trends and CGM data (if available)
-    - Analyze medication adherence patterns
-    - Consider comorbidities (hypertension, dyslipidemia)
-    - Incorporate social determinants of health from available data
+        Required analysis:
+        - Evaluate glycemic control using HbA1c trends and CGM data (if available)
+        - Analyze medication adherence patterns
+        - Consider comorbidities (hypertension, dyslipidemia)
+        - Incorporate social determinants of health from available data
 
-    Format response with:
-    [1] Clinical Summary (3-5 key observations)
-    [2] Risk Stratification (prioritized complications with probability estimates)
-    [3] Intervention Plan (medication adjustments, monitoring frequency, patient education topics)
-    [4] Data Gaps (missing information needed for improved predictions)
+        Format response with:
+        [1] Clinical Summary (3-5 key observations)
+        [2] Risk Stratification (prioritized complications with probability estimates)
+        [3] Intervention Plan (medication adjustments, monitoring frequency, patient education topics)
+        [4] Data Gaps (missing information needed for improved predictions)
 
-    Base recommendations on ADA/EASD guidelines and reference specific patient data 
-    points used in your analysis.""",
-        deps=deps
+        Base recommendations on ADA/EASD guidelines and reference specific patient data 
+        points used in your analysis.
+        
+        Make sure your analysis are not formatted or marked down or listed! Just ensure they are easily readable by Clinical Experts"""
     )
     return result.data
 

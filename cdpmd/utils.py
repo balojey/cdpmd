@@ -3,6 +3,7 @@ import json
 from functools import wraps
 import hashlib
 from datetime import datetime
+import time
 
 from httpx import AsyncClient
 from pydantic_ai import RunContext
@@ -178,7 +179,7 @@ class AsyncCache:
                  None means no expiration. Default: 300s (5 minutes)
         """
         self.cache: Dict[str, Tuple[float, Any]] = {}  # (expiration, value)
-        self.ttl = ttl
+        self.ttl: float = float(ttl)
     
     def __call__(self, func: Callable) -> Callable:
         @wraps(func)
