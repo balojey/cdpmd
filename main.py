@@ -25,6 +25,10 @@ from cdpmd.ui.ordinary_home import ordinary_home
 from cdpmd.ui.auth_home import auth_home
 from cdpmd.ui.patient_space_content import patient_space_content
 from cdpmd.ui.task_bar import task_bar
+from cdpmd.ui.about_page import about_page
+from cdpmd.ui.privacy_policy_page import privacy_policy_page
+from cdpmd.ui.terms_of_service_page import terms_of_service_page
+from cdpmd.ui.contact_page import contact_page
 from cdpmd.utils import get_meldrx_client, get_reference_resources, get_tasks
 from cdpmd.agent import query, new_query
 
@@ -37,7 +41,8 @@ app, route = fast_app(
         Link(rel='preconnect', href='https://fonts.googleapis.com'),
         Link(rel='preconnect', href='https://fonts.gstatic.com', crossorigin=True),
         Link(rel='stylesheet', href='https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap'),
-        Style('@keyframes spin { to { transform: rotate(360deg); } } .htmx-request .htmx-indicator {opacity: 1;}')
+        Style('@keyframes spin { to { transform: rotate(360deg); } } .htmx-request .htmx-indicator {opacity: 1;}'),
+        MarkdownJS()
     ),
     pico=False
 )
@@ -101,8 +106,8 @@ async def details(request: Request, patient_id: str):
             'meldrx_base_url': meldrx_base_url,
             'patient_id': patient_id
         })
-        # result = await new_query(deps=deps)
-        # print(result)
+        result = await new_query(deps=deps)
+        print(result)
         meldrx_client: FHIRClient = get_meldrx_client(
             access_token=access_token,
             meldrx_base_url=meldrx_base_url
@@ -120,8 +125,8 @@ async def details(request: Request, patient_id: str):
         print(e)
         return add_toast(request.session, 'An error occured. Try reloading this page!', 'error')
     return patient_space_content(
-        # response=result,
-        response=CDPMDAgentResponseSchema(**dummy_data),
+        response=result,
+        # response=CDPMDAgentResponseSchema(**dummy_data),
         patient=patient,
         tasks=tasks
     )
