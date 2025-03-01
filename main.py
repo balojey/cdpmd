@@ -55,7 +55,9 @@ oauth.register(
 
 @app.route('/launch')
 async def launch(request: Request):
-    response = await oauth.meldrx.authorize_redirect(request, request.url_for('callback'))
+    callback_url = str(request.url_for('callback'))
+    https_callback_url = callback_url.replace("http://", "https://")
+    response = await oauth.meldrx.authorize_redirect(request, https_callback_url)
     meldrx_base_url = request.query_params['iss']
     response.set_cookie(
         'meldrx_base_url',
