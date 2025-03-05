@@ -6,7 +6,7 @@ from fhir.resources.task import Task
 from cdpmd.ui.task_card import task_card
 
 
-def task_bar(tasks: Literal[list[Task], None]):
+def task_bar(tasks: list[dict] | None):
     return Div(
         P(
             'Tasks',

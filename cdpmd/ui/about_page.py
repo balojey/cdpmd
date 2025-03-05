@@ -51,6 +51,6 @@ def about_page():
                 ),
                 Div(content, cls='marked')
             ),
-            cls='container my-6'
+            cls='container my-6 py-6'
         )
     )

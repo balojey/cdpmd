@@ -2,9 +2,10 @@ from fasthtml.common import *
 from fhir.resources.patient import Patient
 
 from cdpmd.ui.loader import loader
+from cdpmd.ui.patient_row import patient_row
 
 
-def patients_list(patients: list[Patient]):
+def patients_list(patients: list[dict]):
     return Div(
         P(
             'Patients',
@@ -13,19 +14,12 @@ def patients_list(patients: list[Patient]):
         Ul(
             *[
                 Li(
-                    A(
-                        f"{patient.name[0].prefix[0]} {patient.name[0].given[0]} {patient.name[0].family}",
-                        hx_get=f'/patients/{patient.id}',
-                        hx_target='#patient-details-grid',
-                        hx_push_url='true',
-                        hx_indicator='.htmx-indicator',
-                    ),
-                    cls='my-3 is-size-4'
+                    patient_row(patient),
+                    cls='my-3 is-size-4',
                 ) for patient in patients
             ],
             cls='my-5'
         ),
-        loader(),
         cls='cell is-col-span-3',
         style='overflow-y:auto;'
     )

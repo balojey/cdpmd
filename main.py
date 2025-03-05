@@ -8,6 +8,7 @@ from typing import Literal
 import urllib.parse
 from datetime import datetime
 from uuid import uuid4
+from time import sleep
 
 import logfire
 from fasthtml.common import *
@@ -18,9 +19,13 @@ from dotenv import load_dotenv
 import asyncio
 
 load_dotenv()
+print(os.getenv('MELDRX_CLIENT_ID'))
 
 from cdpmd.fhir_client import FHIRClient
-from cdpmd.schemas import ResourceType, CDPMD_Deps, CDPMDAgentResponseSchema, dummy_data
+from cdpmd.schemas import (
+    ResourceType, CDPMD_Deps, CDPMDAgentResponseSchema, dummy_data,
+    predictor_dummy_data, PredictorAgentResponseSchema, ActionType
+)
 from cdpmd.ui.ordinary_home import ordinary_home
 from cdpmd.ui.auth_home import auth_home
 from cdpmd.ui.patient_space_content import patient_space_content
@@ -29,8 +34,12 @@ from cdpmd.ui.about_page import about_page
 from cdpmd.ui.privacy_policy_page import privacy_policy_page
 from cdpmd.ui.terms_of_service_page import terms_of_service_page
 from cdpmd.ui.contact_page import contact_page
-from cdpmd.utils import get_meldrx_client, get_reference_resources, get_tasks
-from cdpmd.agent import query, new_query
+from cdpmd.utils import (
+    get_meldrx_client, get_resources, get_reference_resources,
+    get_tasks, add_source, generate_clinical_summary, create_cards,
+    make_task, new_get_resource, delete_task
+)
+from cdpmd.agent import query, new_query, predictor_query
 
 logfire.configure(token=os.getenv('LOGFIRE_TOKEN'))
 logfire.instrument_httpx(capture_all=True)
@@ -41,8 +50,10 @@ app, route = fast_app(
         Link(rel='preconnect', href='https://fonts.googleapis.com'),
         Link(rel='preconnect', href='https://fonts.gstatic.com', crossorigin=True),
         Link(rel='stylesheet', href='https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap'),
-        Style('@keyframes spin { to { transform: rotate(360deg); } } .htmx-request .htmx-indicator {opacity: 1;}'),
-        MarkdownJS()
+        Style('.loader { display: none; } .htmx-request .loader { display: inline } .htmx-request.loader { display: inline }'),
+        MarkdownJS(),
+        # Script(src="https://kit.fontawesome.com/fc58daca91.js", crossorigin="anonymous"),
+        Link(rel="icon", type="image/png", href="https://imgs.search.brave.com/MXd2gYPBb_8uzLekNa80ujdvyMZP8a33lPsO2Cw4m7c/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly90My5m/dGNkbi5uZXQvanBn/LzAxLzg1LzY2Lzk2/LzM2MF9GXzE4NTY2/OTY0MV9STDA1UG1Y/TTgyUXBwYVJCUVZz/dXk0SkRWcnpoenNh/SC5qcGc")
     ),
     pico=False
 )
@@ -52,10 +63,10 @@ oauth = OAuth()
 oauth.register(
     'meldrx',
     client_id=os.getenv('MELDRX_CLIENT_ID'),
-    response_type='code',
-    code_challenge_method='S256',
-    server_metadata_url='https://app.meldrx.com/.well-known/openid-configuration',
-    client_kwargs={'scope': 'openid profile patient/*.*'}
+    response_type=os.getenv('MELDRX_OIDC_RESPONSE_TYPE'),
+    code_challenge_method=os.getenv('MELDRX_CODE_CHALLENGE_METHOD'),
+    server_metadata_url=os.getenv('MELDRX_SERVER_METADATA'),
+    client_kwargs={'scope': os.getenv('MELDRX_SCOPE'),}
 )
 
 @app.route('/launch')
@@ -83,7 +94,6 @@ async def callback(request: Request):
         expires=token['expires_at'],
         httponly=True
     )
-    pprint(token)
     return response
 
 @app.route('/')
@@ -101,95 +111,119 @@ async def details(request: Request, patient_id: str):
     try:
         access_token = request.cookies['access_token']
         meldrx_base_url = request.cookies['meldrx_base_url']
-        deps = json.dumps({
-            'access_token': access_token,
-            'meldrx_base_url': meldrx_base_url,
-            'patient_id': patient_id
-        })
-        result = await new_query(deps=deps)
-        print(result)
-        meldrx_client: FHIRClient = get_meldrx_client(
-            access_token=access_token,
-            meldrx_base_url=meldrx_base_url
+        (
+            patient,
+            conditions,
+            observations,
+            medications,
+            encounters,
+            diagnostic_reports,
+            risk_assessments,
+            care_plans
+        ) = await get_resources(access_token, meldrx_base_url, patient_id)
+        response = await predictor_query(
+            patient,
+            conditions,
+            observations,
+            medications,
+            encounters,
+            diagnostic_reports,
+            risk_assessments,
+            care_plans
         )
-        patient: Patient = await meldrx_client.read_resource(
-            ResourceType.patient.value,
+        tasks = await new_get_resource(
+            ResourceType.task.value,
+            access_token,
+            meldrx_base_url,
             patient_id
-        )
-        tasks: list[Task] | None = await get_tasks(
-            patient_ref=f'{ResourceType.patient.value}/{patient_id}',
-            access_token=access_token,
-            meldrx_base_url=meldrx_base_url
         )
     except Exception as e:
         print(e)
         return add_toast(request.session, 'An error occured. Try reloading this page!', 'error')
     return patient_space_content(
-        response=result,
-        # response=CDPMDAgentResponseSchema(**dummy_data),
+        response=PredictorAgentResponseSchema(**response),
         patient=patient,
         tasks=tasks
     )
 
-@app.route('/tasks/delete/{patient_id}/{task_id}')
-async def delete_task(request: Request, patient_id: str, task_id: str):
+@app.route('/actions/{patient_id}')
+async def manage_tasks(request: Request, patient_id: str):
     try:
         access_token = request.cookies['access_token']
         meldrx_base_url = request.cookies['meldrx_base_url']
-
-        meldrx_client = get_meldrx_client(
-            access_token=access_token,
-            meldrx_base_url=meldrx_base_url
-        )
-        response = await meldrx_client.delete_resource(
-            ResourceType.task.value,
-            task_id
-        )
-        print(response)
-        tasks: list[Task] | None = await get_tasks(
-            patient_ref=f'{ResourceType.patient.value}/{patient_id}',
-            access_token=access_token,
-            meldrx_base_url=meldrx_base_url
-        )
-    except Exception as e:
-        print(e)
-        return add_toast(request.session, 'An error occured. Try reloading this page!', 'error')
-    return task_bar(tasks)
-
-@app.route('/tasks/create/{patient_id}')
-async def create_task(request: Request, patient_id: str | None):
-    try:
-        access_token = request.cookies['access_token']
-        meldrx_base_url = request.cookies['meldrx_base_url']
-
-        meldrx_client = get_meldrx_client(
-            access_token=access_token,
-            meldrx_base_url=meldrx_base_url
-        )
 
         body = await request.body()
         query_dict = urllib.parse.parse_qs(body.decode())
         query_dict = {k: v[0] for k, v in query_dict.items()}
-        json_obj = {
-            'id': str(uuid4()),
-            'description': query_dict['description'],
-            'intent': 'order',
-            'status': 'accepted',
-            'for': {
-                'reference': f'Patient/{patient_id}'
-            }
-        }
-        task = Task(**json_obj)
-        result = await meldrx_client.create_resource(ResourceType.task.value, task.model_dump())
-        tasks: list[Task] | None = await get_tasks(
-            patient_ref=f'{ResourceType.patient.value}/{patient_id}',
-            access_token=access_token,
-            meldrx_base_url=meldrx_base_url
+        if query_dict['action_type'] == ActionType.create.value or query_dict['action_type'] == ActionType.update.value:
+            await make_task(
+                query_dict['description'],
+                query_dict['resourceId'],
+                query_dict['resource_type'],
+                patient_id,
+                access_token,
+                meldrx_base_url
+            )
+        else:
+            await delete_task(
+                query_dict['resourceId'],
+                access_token,
+                meldrx_base_url,
+            )
+        tasks = await new_get_resource(
+            ResourceType.task.value,
+            access_token,
+            meldrx_base_url,
+            patient_id
         )
     except Exception as e:
         print(e)
-        return add_toast(request.session, 'An error occured. Try reloading this page!', 'error')
+        return add_toast(request.session, 'An error occured. Try reloading this page!', 'error', True)
     return task_bar(tasks)
+
+@app.route('/cds-services')
+async def cds_services(request: Request):
+    return {
+        "services": [
+            {
+                "hook": "patient-view",
+                "title": "Chronic Disease Progressive Model For Diabetes (CDPMD)",
+                "description": "A clinical decision support system for managing diabetes.",
+                "id": "predictor",
+                "prefetch": {
+                    "patient": "Patient/{{context.patientId}}",
+                    "conditions": "Condition?patient={{context.patientId}}",
+                    "medications": "MedicationRequest?patient={{context.patientId}}",
+                    "observations": "Observation?patient={{context.patientId}}",
+                    "encounters": "Encounter?patient={{context.patientId}}",
+                    "diagnosticReports": "DiagnosticReport?patient={{context.patientId}}",
+                    "riskAssessments": "RiskAssessment?patient={{context.patientId}}",
+                    "carePlans": "CarePlan?patient={{context.patientId}}",
+                    # "goals": "Goal?patient={{context.patientId}}",
+                    # "tasks": "Task?patient={{context.patientId}}",
+                }
+            }
+        ]
+    }
+
+
+@app.route('/cds-services/predictor')
+async def predictor(request: Request):
+    body = await request.body()
+    body = json.loads(body.decode())
+    fhir_data = {}
+    fhir_data['patient'] = body['prefetch']['patient']
+    fhir_data['conditions'] = body['prefetch']['conditions']
+    fhir_data['medications'] = body['prefetch']['medications']
+    fhir_data['observations'] = body['prefetch']['observations']
+    fhir_data['encounters'] = body['prefetch']['encounters']
+    fhir_data['diagnosticReports'] = body['prefetch']['diagnosticReports']
+    fhir_data['riskAssessments'] = body['prefetch']['riskAssessments']
+    fhir_data['carePlans'] = body['prefetch']['carePlans']
+    summary = await generate_clinical_summary(fhir_data)
+    # print(summary)
+    return await create_cards(summary, str(request.base_url))
+    
 
 @app.route('/about')
 async def about():

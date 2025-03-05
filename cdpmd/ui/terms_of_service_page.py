@@ -44,6 +44,6 @@ def terms_of_service_page():
                 ),
                 Div(content, cls='marked')
             ),
-            cls='container my-6'
+            cls='container my-6 py-6'
         )
     )

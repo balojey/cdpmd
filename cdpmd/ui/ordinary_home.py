@@ -24,6 +24,7 @@ def ordinary_home():
                     cls='is-size-4 m-5'
                 )
             ),
-            cls='container my-6'
-        )
+            cls='container my-6 py-6'
+        ),
+        cls='has-navbar-fixed-top'
     )

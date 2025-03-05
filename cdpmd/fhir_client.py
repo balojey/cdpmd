@@ -14,6 +14,11 @@ from fhir.resources.medicationrequest import MedicationRequest
 from fhir.resources.servicerequest import ServiceRequest
 from fhir.resources.supplyrequest import SupplyRequest
 from fhir.resources.task import Task
+from fhir.resources.encounter import Encounter
+from fhir.resources.diagnosticreport import DiagnosticReport
+from fhir.resources.riskassessment import RiskAssessment
+from fhir.resources.careplan import CarePlan
+
 
 class FHIRClient:
     def __init__(self, base_url: str, auth=None, headers=None):
@@ -74,17 +79,21 @@ class FHIRClient:
         return cls.for_bearer_token(fhir_url, token_data["access_token"])
 
     # Core methods -------------------------------------------------------------
-    async def read_resource(self, resource_type: str, resource_id: str | None = None):
-        url = self._construct_url(resource_type, resource_id)
+    async def read_resource(self, resource_type: str, resource_id: str | None = None, params: dict | None = None):
+        url = self._construct_url(resource_type, resource_id, params)
+        print(url)
         response = await self.client.get(url)
         response.raise_for_status()
         
         data = response.json()
-        resource_class = globals()[resource_type]
+        # resource_class = globals()[resource_type]
+        # print(data, '\n\n\n')
         
         if resource_id:
-            return resource_class(**data)
-        return [resource_class(**entry["resource"]) for entry in data.get("entry", [])]
+            return data
+            # return resource_class(**data)
+        # return [resource_class(**entry["resource"]) for entry in data.get("entry", [])]
+        return [entry["resource"] for entry in data.get("entry", [])]
 
     async def search_resource(self, resource_type: str, params: dict):
         url = self._construct_url(resource_type)
@@ -111,8 +120,11 @@ class FHIRClient:
         return response.json() if response.content else None
 
     # Helper methods -----------------------------------------------------------
-    def _construct_url(self, resource_type: str, resource_id: str | None = None):
+    def _construct_url(self, resource_type: str, resource_id: str | None = None, params: dict | None = None):
         path = f"/{resource_type}"
         if resource_id:
             path += f"/{resource_id}"
+        if params:
+            for k, v in params.items():
+                path += f'?{k}={v}'
         return path

@@ -6,7 +6,7 @@ from cdpmd.ui.patients_list import patients_list
 from cdpmd.ui.patient_space import patient_space
 
 
-def auth_home(patients: list[Patient]):
+def auth_home(patients: list[dict]):
     return Div(
         header(),
         Div(
@@ -16,7 +16,8 @@ def auth_home(patients: list[Patient]):
                 cls='grid is-gap-3',
                 id="patient-details"
             ),
-            cls='fixed-grid has-12-cols p-3 my-5'
+            cls='fixed-grid has-12-cols p-3 my-6 py-6'
         ),
-        style='margin:0;padding:0;overflow:hidden;'
+        style='margin:0;padding:0;overflow:hidden;',
+        cls='has-navbar-fixed-top'
     )
