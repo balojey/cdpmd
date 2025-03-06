@@ -81,18 +81,13 @@ class FHIRClient:
     # Core methods -------------------------------------------------------------
     async def read_resource(self, resource_type: str, resource_id: str | None = None, params: dict | None = None):
         url = self._construct_url(resource_type, resource_id, params)
-        print(url)
         response = await self.client.get(url)
         response.raise_for_status()
         
         data = response.json()
-        # resource_class = globals()[resource_type]
-        # print(data, '\n\n\n')
         
         if resource_id:
             return data
-            # return resource_class(**data)
-        # return [resource_class(**entry["resource"]) for entry in data.get("entry", [])]
         return [entry["resource"] for entry in data.get("entry", [])]
 
     async def search_resource(self, resource_type: str, params: dict):

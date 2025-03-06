@@ -1,7 +1,6 @@
 from typing import Literal
 
 from fasthtml.common import *
-from fhir.resources.task import Task
 
 from cdpmd.ui.task_card import task_card
 

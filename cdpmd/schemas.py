@@ -42,26 +42,6 @@ class CardDetailsLinkType(Enum):
     absolute = 'absolute'
     smart = 'smart'
 
-class SuggestionType(Enum):
-    create = 'create'
-
-class Suggestion(BaseModel):
-    label: str
-    description: str
-
-class CardDetails(BaseModel):
-    summary: str
-    detail: str
-    indicator: Literal[
-        Indicator.info.value,
-        Indicator.warning.value,
-        Indicator.critical.value,
-    ]
-    suggestions: list[Suggestion]
-
-class CDPMDAgentResponseSchema(BaseModel):
-    cards: list[CardDetails]
-
 class Link(BaseModel):
     label: str
     url: str
@@ -75,19 +55,6 @@ class CardDetailsLink(BaseModel):
         CardDetailsLinkType.smart.value
     ]
 
-class Resource(BaseModel):
-    resourceType: Literal[
-        ResourceType.communication_request.value,
-        ResourceType.coverage_eligibility_request.value,
-        ResourceType.device_request.value,
-        ResourceType.enrollment_request.value,
-        ResourceType.medication_request.value,
-        ResourceType.service_request.value,
-        ResourceType.supply_request.value,
-        ResourceType.task.value
-    ]
-    id: str
-
 class PredictorAction(BaseModel):
     type: Literal[
         ActionType.create.value,
@@ -95,7 +62,6 @@ class PredictorAction(BaseModel):
         ActionType.delete.value,
     ]
     description: str
-    # resource: Resource
     resourceType: Literal[
         ResourceType.communication_request.value,
         ResourceType.coverage_eligibility_request.value,
@@ -129,66 +95,6 @@ class PredictorCardDetails(BaseModel):
 class PredictorAgentResponseSchema(BaseModel):
     cards: list[PredictorCardDetails]
 
-class CDPMD_Deps(BaseModel):
-    meldrx_base_url: str
-    access_token: str
-    patient_id: str
-    cache: dict = Field(default_factory=dict)
-
-dummy_data = {
-    'cards': [
-        {
-            'summary': 'blah blah blah',
-            'detail': 'blah blah blah blah blah blah blah blah blah blah',
-            'indicator': 'info',
-            'suggestions': [
-                {
-                    'label': 'blah',
-                    'suggestion_type': 'create',
-                    'description': 'blah blah blah blah blah blah blah blah blah blah',
-                    'resource_type': 'Task'
-                },
-                {
-                    'label': 'blah',
-                    'suggestion_type': 'create',
-                    'description': 'blah blah blah blah blah blah blah blah blah blah',
-                    'resource_type': 'Task'
-                },
-                {
-                    'label': 'blah',
-                    'suggestion_type': 'create',
-                    'description': 'blah blah blah blah blah blah blah blah blah blah',
-                    'resource_type': 'Task'
-                },
-            ]
-        },
-        {
-            'summary': 'blah blah blah',
-            'detail': 'blah blah blah blah blah blah blah blah blah blah',
-            'indicator': 'info',
-            'suggestions': [
-                {
-                    'label': 'blah',
-                    'suggestion_type': 'create',
-                    'description': 'blah blah blah blah blah blah blah blah blah blah',
-                    'resource_type': 'Task'
-                },
-                {
-                    'label': 'blah',
-                    'suggestion_type': 'create',
-                    'description': 'blah blah blah blah blah blah blah blah blah blah',
-                    'resource_type': 'Task'
-                },
-                {
-                    'label': 'blah',
-                    'suggestion_type': 'create',
-                    'description': 'blah blah blah blah blah blah blah blah blah blah',
-                    'resource_type': 'Task'
-                },
-            ]
-        },
-    ]
-}
 
 predictor_dummy_data = PredictorAgentResponseSchema(**{
     'cards': [

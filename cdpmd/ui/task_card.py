@@ -1,5 +1,4 @@
 from fasthtml.common import *
-from fhir.resources.task import Task
 
 from cdpmd.utils import get_payload
 from cdpmd.schemas import ActionType

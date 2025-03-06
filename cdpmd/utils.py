@@ -22,7 +22,7 @@ from fhir.resources.servicerequest import ServiceRequest
 from fhir.resources.supplyrequest import SupplyRequest
 from fhir.resources.task import Task
 
-from cdpmd.schemas import CDPMD_Deps, ResourceType, CDPMDAgentResponseSchema, Link, CardDetailsLink, CardDetailsLinkType
+from cdpmd.schemas import ResourceType, Link, CardDetailsLink, CardDetailsLinkType
 from cdpmd.fhir_client import FHIRClient
 
 
@@ -82,14 +82,6 @@ class AsyncCache:
     def _make_key(self, args: Tuple, kwargs: Dict) -> str:
         """Create unique hash key from arguments."""
         patient_id = args[0]['id']
-        # dumped = json.dumps({
-        #     'args': args,
-        #     'kwargs': {
-        #         k: v for k, v in kwargs.items()
-        #         if k not in ['ttl']  # Exclude TTL from key generation
-        #     }
-        # }, sort_keys=True, default=str)
-        # return hashlib.sha256(dumped.encode()).hexdigest()
         return patient_id
 
     def clear(self):
@@ -169,14 +161,6 @@ class AsyncFhirCache:
     def _make_key(self, args: Tuple, kwargs: Dict) -> str:
         """Create unique hash key from arguments."""
         patient_id = args[-1]
-        # dumped = json.dumps({
-        #     'args': args,
-        #     'kwargs': {
-        #         k: v for k, v in kwargs.items()
-        #         if k not in ['ttl']  # Exclude TTL from key generation
-        #     }
-        # }, sort_keys=True, default=str)
-        # return hashlib.sha256(dumped.encode()).hexdigest()
         return patient_id
 
     def clear(self):
@@ -208,36 +192,6 @@ FHIRResource = Union[
     MedicationRequest, ServiceRequest, SupplyRequest, Task
 ]
 
-async def get_reference_resources(
-    resources: List[Union[FHIRResource, None]],
-    patient_ref: str
-) -> List[FHIRResource]:
-    """Filters FHIR resources to those associated with the specified patient.
-    
-    Args:
-        resources: List of FHIR resources to filter
-        patient_ref: Full patient reference string (e.g. 'Patient/123')
-        
-    Returns:
-        List of resources belonging to the specified patient
-    """
-    filtered = []
-    for resource in resources:
-        if not resource:
-            continue
-            
-        # Handle Task resource special case
-        if isinstance(resource, Task):
-            if resource.for_fhir and resource.for_fhir.reference == patient_ref:
-                filtered.append(resource)
-            continue
-            
-        # Standard patient reference check
-        if resource.subject and resource.subject.reference == patient_ref:
-            filtered.append(resource)
-            
-    return filtered
-
 async def new_get_resource(
     resource_type: Literal[
         ResourceType.patient.value,
@@ -267,7 +221,6 @@ async def new_get_resource(
                     'patient': patient_id
                 } if resource_type != ResourceType.patient.value else None
             )
-            # print(resource, '\n\n\n')
             
             return resource
             
@@ -331,78 +284,12 @@ async def get_resources(
     )
     return [patient, conditions, observations, medications, encounters, diagnostic_reports, risk_assessments, care_plans]
 
-async def get_resource(
-    ctx: RunContext[CDPMD_Deps],
-    resource_type: Literal[
-        ResourceType.patient.value,
-        ResourceType.condition.value,
-        ResourceType.medication.value,
-        ResourceType.observation.value,
-        ResourceType.task.value,
-    ]
-) -> Union[FHIRResource, List[FHIRResource], None]:
-    """Retrieves FHIR resources from the server with patient context awareness.
-    
-    Args:
-        resource_type: Type of FHIR resource to retrieve
-        
-    Returns:
-        Single resource or list of resources filtered to the current patient
-        
-    Examples:
-        >>> # Get patient record
-        >>> patient = await get_resource('Patient')
-        >>>
-        >>> # Get all observations for patient
-        >>> observations = await get_resource('Observation')
-    """
-    cache_key = f"{resource_type}_{ctx.deps.patient_id}"
-    
-    # Return cached result if available
-    if cache_key in ctx.deps.cache:
-        return ctx.deps.cache[cache_key]
-    
-    async with get_meldrx_client(ctx.deps.access_token, ctx.deps.meldrx_base_url) as client:
-        resource_id = ctx.deps.patient_id if resource_type == ResourceType.patient.value else None
-        
-        try:
-            resource = await client.read_resource(
-                resource_type=resource_type,
-                resource_id=resource_id
-            )
-            
-            # Filter and process resources
-            if isinstance(resource, list):
-                patient_ref = f"Patient/{ctx.deps.patient_id}"
-                resource = await get_reference_resources(resource, patient_ref)
-            
-            # Store in cache before returning
-            ctx.deps.cache[cache_key] = resource
-            return resource
-            
-        except httpx.HTTPStatusError as e:
-            ctx.logger.error(f"FHIR API error for {resource_type}: {e}")
-            return None
-
 def get_meldrx_client(access_token: str, meldrx_base_url: str) -> FHIRClient:
     """Factory for authenticated FHIR client with connection pooling."""
     return FHIRClient.for_bearer_token(
         base_url=meldrx_base_url,
         token=access_token
     )
-
-async def get_tasks(
-    patient_ref: str,
-    access_token: str,
-    meldrx_base_url: str
-) -> Union[List[Task], None]:
-    """Retrieves tasks associated with a specific patient."""
-    async with get_meldrx_client(access_token, meldrx_base_url) as client:
-        try:
-            tasks = await client.read_resource(ResourceType.task.value)
-            return await get_reference_resources(tasks, patient_ref)
-        except httpx.HTTPStatusError as e:
-            return None
 
 def get_payload(**kwargs) -> str:
     """Creates a standardized JSON payload for API requests."""

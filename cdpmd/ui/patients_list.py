@@ -1,5 +1,4 @@
 from fasthtml.common import *
-from fhir.resources.patient import Patient
 
 from cdpmd.ui.loader import loader
 from cdpmd.ui.patient_row import patient_row

@@ -7,8 +7,6 @@ import os
 from typing import Literal
 import urllib.parse
 from datetime import datetime
-from uuid import uuid4
-from time import sleep
 
 import logfire
 from fasthtml.common import *
@@ -19,12 +17,11 @@ from dotenv import load_dotenv
 import asyncio
 
 load_dotenv()
-print(os.getenv('MELDRX_CLIENT_ID'))
 
 from cdpmd.fhir_client import FHIRClient
 from cdpmd.schemas import (
-    ResourceType, CDPMD_Deps, CDPMDAgentResponseSchema, dummy_data,
-    predictor_dummy_data, PredictorAgentResponseSchema, ActionType
+    ResourceType, predictor_dummy_data, PredictorAgentResponseSchema,
+    ActionType
 )
 from cdpmd.ui.ordinary_home import ordinary_home
 from cdpmd.ui.auth_home import auth_home
@@ -35,11 +32,10 @@ from cdpmd.ui.privacy_policy_page import privacy_policy_page
 from cdpmd.ui.terms_of_service_page import terms_of_service_page
 from cdpmd.ui.contact_page import contact_page
 from cdpmd.utils import (
-    get_meldrx_client, get_resources, get_reference_resources,
-    get_tasks, add_source, generate_clinical_summary, create_cards,
+    get_meldrx_client, generate_clinical_summary, create_cards,
     make_task, new_get_resource, delete_task
 )
-from cdpmd.agent import query, new_query, predictor_query
+from cdpmd.agent import predictor_query
 
 logfire.configure(token=os.getenv('LOGFIRE_TOKEN'))
 logfire.instrument_httpx(capture_all=True)
@@ -52,7 +48,6 @@ app, route = fast_app(
         Link(rel='stylesheet', href='https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap'),
         Style('.loader { display: none; } .htmx-request .loader { display: inline } .htmx-request.loader { display: inline }'),
         MarkdownJS(),
-        # Script(src="https://kit.fontawesome.com/fc58daca91.js", crossorigin="anonymous"),
         Link(rel="icon", type="image/png", href="https://imgs.search.brave.com/MXd2gYPBb_8uzLekNa80ujdvyMZP8a33lPsO2Cw4m7c/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly90My5m/dGNkbi5uZXQvanBn/LzAxLzg1LzY2Lzk2/LzM2MF9GXzE4NTY2/OTY0MV9STDA1UG1Y/TTgyUXBwYVJCUVZz/dXk0SkRWcnpoenNh/SC5qcGc")
     ),
     pico=False
@@ -199,8 +194,6 @@ async def cds_services(request: Request):
                     "diagnosticReports": "DiagnosticReport?patient={{context.patientId}}",
                     "riskAssessments": "RiskAssessment?patient={{context.patientId}}",
                     "carePlans": "CarePlan?patient={{context.patientId}}",
-                    # "goals": "Goal?patient={{context.patientId}}",
-                    # "tasks": "Task?patient={{context.patientId}}",
                 }
             }
         ]
@@ -212,16 +205,15 @@ async def predictor(request: Request):
     body = await request.body()
     body = json.loads(body.decode())
     fhir_data = {}
-    fhir_data['patient'] = body['prefetch']['patient']
-    fhir_data['conditions'] = body['prefetch']['conditions']
-    fhir_data['medications'] = body['prefetch']['medications']
-    fhir_data['observations'] = body['prefetch']['observations']
-    fhir_data['encounters'] = body['prefetch']['encounters']
-    fhir_data['diagnosticReports'] = body['prefetch']['diagnosticReports']
-    fhir_data['riskAssessments'] = body['prefetch']['riskAssessments']
-    fhir_data['carePlans'] = body['prefetch']['carePlans']
+    fhir_data['patient'] = body.get('prefetch', {}).get('patient', None)
+    fhir_data['conditions'] = body.get('prefetch', {}).get('conditions', None)
+    fhir_data['medications'] = body.get('prefetch', {}).get('medications', None)
+    fhir_data['observations'] = body.get('prefetch', {}).get('observations', None)
+    fhir_data['encounters'] = body.get('prefetch', {}).get('encounters', None)
+    fhir_data['diagnosticReports'] = body.get('prefetch', {}).get('diagnosticReports', None)
+    fhir_data['riskAssessments'] = body.get('prefetch', {}).get('riskAssessments', None)
+    fhir_data['carePlans'] = body.get('prefetch', {}).get('carePlans', None)
     summary = await generate_clinical_summary(fhir_data)
-    # print(summary)
     return await create_cards(summary, str(request.base_url))
     
 

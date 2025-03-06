@@ -6,7 +6,6 @@ from cdpmd.ui.loader import loader
 
 
 def card(card: PredictorCardDetails, patient_id: str | None):
-    # print(card)
     indicator_colors = {
         'info': 'is-info',
         'warning': 'is-warning',

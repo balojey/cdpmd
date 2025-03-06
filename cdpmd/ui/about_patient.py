@@ -1,10 +1,9 @@
 from fasthtml.common import *
-from fhir.resources.patient import Patient
 
 from cdpmd.utils import calculate_age
 
 
-def about_patient(patient: Patient):
+def about_patient(patient: dict):
     return Div(
         Span(
             f'{patient['name'][0]['given'][0]} {patient['name'][0]['family']} ',

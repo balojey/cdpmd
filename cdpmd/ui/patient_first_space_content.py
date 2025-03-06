@@ -1,5 +1,4 @@
 from fasthtml.common import *
-from fhir.resources.patient import Patient
 
 from cdpmd.schemas import PredictorAgentResponseSchema
 from cdpmd.ui.cards import cards
