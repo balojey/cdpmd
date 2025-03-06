@@ -20,7 +20,7 @@ def ordinary_home():
                     Li(
                         'Your Session has expired: If this is the case, go back to meldrx and relaunch the app.'
                     ),
-                    Li('You don\'t know how to navigate this app. See ', A('here', href='https://youtube.com', target='_blank')),
+                    Li('You are new here. See ', A('here', href='https://devpost.com/software/chronic-disease-progressive-model-for-diabetes-cdpmd', target='_blank')),
                     cls='is-size-4 m-5'
                 )
             ),

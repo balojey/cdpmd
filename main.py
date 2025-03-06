@@ -48,7 +48,7 @@ app, route = fast_app(
         Link(rel='stylesheet', href='https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap'),
         Style('.loader { display: none; } .htmx-request .loader { display: inline } .htmx-request.loader { display: inline }'),
         MarkdownJS(),
-        Link(rel="icon", type="image/png", href="https://imgs.search.brave.com/MXd2gYPBb_8uzLekNa80ujdvyMZP8a33lPsO2Cw4m7c/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly90My5m/dGNkbi5uZXQvanBn/LzAxLzg1LzY2Lzk2/LzM2MF9GXzE4NTY2/OTY0MV9STDA1UG1Y/TTgyUXBwYVJCUVZz/dXk0SkRWcnpoenNh/SC5qcGc")
+        Link(rel="icon", type="image/png", href="https://imgs.search.brave.com/MXd2gYPBb_8uzLekNa80ujdvyMZP8a33lPsO2Cw4m7c/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly90My5m/dGNkbi5uZXQvanBn/LzAxLzg1LzY2Lzk2/LzM2MF9GXzE4NTY2/OTY0MV9STDA1UG1Y/TTgyUXBwYVJCUVZz/dXk0SkRWcnpoenNh/SC5qcGc"),
     ),
     pico=False
 )
@@ -94,12 +94,12 @@ async def callback(request: Request):
 @app.route('/')
 async def index(request: Request):
     if 'access_token' not in request.cookies:
-        return ordinary_home()
+        return Title('CDPMD - Chronic Disease Progressive Model for Diabetes'), ordinary_home()
     meldrx_client: FHIRClient = get_meldrx_client(
         access_token=request.cookies['access_token'],
         meldrx_base_url=request.cookies['meldrx_base_url'],
     )
-    return auth_home(await meldrx_client.read_resource(ResourceType.patient.value))
+    return Title('CDPMD - Chronic Disease Progressive Model for Diabetes'), auth_home(await meldrx_client.read_resource(ResourceType.patient.value))
 
 @app.route('/patients/{patient_id}')
 async def details(request: Request, patient_id: str):
@@ -219,18 +219,18 @@ async def predictor(request: Request):
 
 @app.route('/about')
 async def about():
-    return about_page()
+    return Title('About'), about_page()
 
 @app.route('/privacy-policy')
 async def privacy_policy():
-    return privacy_policy_page()
+    return Title('Privacy Policy'), privacy_policy_page()
 
 @app.route('/terms-of-service')
 async def terms_of_service():
-    return terms_of_service_page()
+    return Title('Terms of Service'), terms_of_service_page()
 
 @app.route('/contact')
 async def contact():
-    return contact_page()
+    return Title('Contact'), contact_page()
 
 serve()
