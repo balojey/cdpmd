@@ -181,7 +181,7 @@ async def manage_tasks(request: Request, patient_id: str):
         return add_toast(request.session, 'An error occured. Try reloading this page!', 'error', True)
     return task_bar(tasks)
 
-@app.route('/cds-services')
+@app.route('/cds-services/')
 async def cds_services(request: Request):
     return {
         "services": [
