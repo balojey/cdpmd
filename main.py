@@ -33,7 +33,7 @@ from cdpmd.ui.terms_of_service_page import terms_of_service_page
 from cdpmd.ui.contact_page import contact_page
 from cdpmd.utils import (
     get_meldrx_client, generate_clinical_summary, create_cards,
-    make_task, new_get_resource, delete_task
+    make_task, new_get_resource, delete_task, get_resources
 )
 from cdpmd.agent import predictor_query
 
